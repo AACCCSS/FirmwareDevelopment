@@ -1,85 +1,161 @@
-/* 
-Heart Beat Con contador OVF temporizador
+/*
+Heart Beat con CTC comp A
 
-Se requiere implementar un sistema de señalización tipo “heartbeat” utilizando el Timer0 del microcontrolador ATmega328P.
+Se requiere implementar un sistema de señalización tipo “heartbeat” utilizando CTC A del microcontrolador ATmega328P.
 
-1) La señal debe generarse mediante interrupciones por overflow y debe alternar el estado del pin PC4 aproximadamente cada 500 ms. 
+1) La señal debe generarse mediante interrupciones por match CTC y debe alternar el estado del pin PC4 aproximadamente cada 100 ms. 
 
 2) El sistema debe operar sin bloqueos y delegar el control de tiempo a una interrupción.
  
 3) Generar una señal periódica en el pin PC4 utilizando Timer0 en modo normal con interrupciones, permitiendo que el main quede libre para otras tareas.
 
 El sistema genera una señal visible tipo heartbeat en el pin PC4 que indica que el microcontrolador está funcionando correctamente.
+
+
 */
 
 #include <stdint.h>
 
-volatile uint8_t* DDR_ADDR_C   = (uint8_t*)0x27;
-volatile uint8_t* PORT_ADDR_C  = (uint8_t*)0x28;
+/* ============================
+   Registros
+   ============================ */
 
-volatile uint8_t* TIFR0_ADDR   = (uint8_t*)0x35;
-volatile uint8_t* TCCR0A_ADDR  = (uint8_t*)0x44;
-volatile uint8_t* TCCR0B_ADDR  = (uint8_t*)0x45;
-volatile uint8_t* TCNT0_ADDR   = (uint8_t*)0x46;
-volatile uint8_t* TIMSK0_ADDR  = (uint8_t*)0x6E;
+volatile uint8_t* DDR_ADDR_C    = (uint8_t*)0x27;
+volatile uint8_t* PORT_ADDR_C   = (uint8_t*)0x28;
 
-#define BIT(n)          (1U << (n))
+volatile uint8_t* TCCR0A_ADDR   = (uint8_t*)0x44;
+volatile uint8_t* TCCR0B_ADDR   = (uint8_t*)0x45;
+volatile uint8_t* TCNT0_ADDR    = (uint8_t*)0x46;
+volatile uint8_t* OCR0A_ADDR    = (uint8_t*)0x47;
 
-#define PC4_MASK        BIT(4)
+volatile uint8_t* TIFR0_ADDR    = (uint8_t*)0x35;
+volatile uint8_t* TIMSK0_ADDR   = (uint8_t*)0x6E;
 
-#define TOV0_MASK       BIT(0)
-#define TOIE0_MASK      BIT(0)
+/* ============================
+   Macros
+   ============================ */
 
-#define CS01_MASK       BIT(1)
-#define CS00_MASK       BIT(0)
+#define BIT(n)             (1U << (n))
 
-#define TIMER0_PRELOAD  6U
-#define HEARTBEAT_MS    500U
+#define PC4_MASK           BIT(4)
 
-volatile uint16_t heartbeat_acc_ms = 0;
+#define WGM01_MASK         BIT(1)
 
-static void timer0_normal_interrupt_init(void)
-{
-    *TCCR0A_ADDR = 0x00;                    // Modo normal
-    *TCCR0B_ADDR = 0x00;                    // Timer detenido
-    *TCNT0_ADDR  = TIMER0_PRELOAD;
-    *TIFR0_ADDR  = TOV0_MASK;               // Limpia overflow previo
-    *TIMSK0_ADDR |= TOIE0_MASK;             // Habilita interrupción overflow
-    *TCCR0B_ADDR = CS01_MASK | CS00_MASK;   // Prescaler 64
+#define OCF0A_MASK         BIT(1)
+#define OCIE0A_MASK        BIT(1)
 
-    __asm__ __volatile__("sei");            // Habilita interrupciones globales
-}
+#define CS01_MASK          BIT(1)
+#define CS00_MASK          BIT(0)
 
 /*
-   Vector TIMER0_OVF en ATmega328P usando avr-gcc:
-   TIMER0_OVF_vect corresponde a __vector_16
+   F_CPU = 16 MHz
+   Prescaler = 64
+
+   Tick Timer0:
+
+   16MHz / 64 = 250kHz
+
+   Tick = 4 us
+
+   OCR0A = 249
+
+   (249 + 1) * 4us
+   = 1000 us
+   = 1 ms
 */
-void __vector_16(void) __attribute__((signal));
-void __vector_16(void)
+
+#define OCR0A_COMPARE_VALUE   249U
+
+/*
+   100 interrupciones de 1 ms
+   = 100 ms
+*/
+
+#define HEARTBEAT_PERIOD_MS   100U
+
+/* ============================
+   Variables globales
+   ============================ */
+
+volatile uint16_t main_period_acc = 0;
+volatile uint8_t period_flag = 0;
+
+/* ============================
+   Timer0 CTC
+   ============================ */
+
+static void timer0_ctc_interrupt_init(void)
 {
-    *TCNT0_ADDR = TIMER0_PRELOAD;
+    *TCCR0A_ADDR = 0x00;
+    *TCCR0B_ADDR = 0x00;
 
-    heartbeat_acc_ms++;
+    *TCCR0A_ADDR |= WGM01_MASK;
 
-    if (heartbeat_acc_ms >= HEARTBEAT_MS)
+    *TCNT0_ADDR = 0x00;
+
+    *OCR0A_ADDR = OCR0A_COMPARE_VALUE;
+
+    *TIFR0_ADDR |= OCF0A_MASK;
+
+    *TIMSK0_ADDR |= OCIE0A_MASK;
+
+    *TCCR0B_ADDR = CS01_MASK | CS00_MASK;
+
+    __asm__ __volatile__("sei");
+}
+
+/* ============================
+   TIMER0_COMPA_vect
+   __vector_14
+   ============================ */
+
+void __vector_14(void) __attribute__((signal));
+
+void __vector_14(void)
+{
+    main_period_acc++;
+
+    if (main_period_acc >= HEARTBEAT_PERIOD_MS)
     {
-        heartbeat_acc_ms = 0;
-        *PORT_ADDR_C ^= PC4_MASK;
+        main_period_acc = 0;
+        period_flag = 1;
     }
 }
+
+/* ============================
+   Heartbeat
+   ============================ */
+
+static void toggle_heartbeat(void)
+{
+    *PORT_ADDR_C ^= PC4_MASK;
+}
+
+/* ============================
+   Main
+   ============================ */
 
 int main(void)
 {
-    *DDR_ADDR_C  |= PC4_MASK;
+    *DDR_ADDR_C |= PC4_MASK;
     *PORT_ADDR_C &= ~PC4_MASK;
 
-    timer0_normal_interrupt_init();
+    timer0_ctc_interrupt_init();
 
     while (1)
     {
+        if (period_flag)
+        {
+            period_flag = 0;
+
+            toggle_heartbeat();
+        }
+
         /*
-           El heartbeat ya se ejecuta dentro de la ISR.
-           Aquí podrían ir otras tareas del programa principal.
+           Otras tareas no bloqueantes
+           pueden ejecutarse aquí.
         */
     }
+
+    return 0;
 }
