@@ -1,0 +1,245 @@
+Proposito general: 
+3 Leds. 
+Rojo:  3 Segundos
+Verde 3 Segundos
+Amarillo 2 segundos. 
+
+El algoritmo:
+Comienza con el color rojo, 3 segundos encendido
+Cambia a verde, 2 segundos encendidos
+Parpadea 2 veces despues de esos 2 segundos
+Pasa al amarillo, se enciende por 2 segundos. 
+Cambia al color rojo y se repite
+
+
+Idea general
+El programa implementa una máquina de estados finitos (FSM) para controlar un semáforo con tres estados:
+	• Rojo 
+	• Verde 
+	• Amarillo 
+El tiempo de permanencia en cada estado es administrado mediante Timer0, configurado en modo Normal (Overflow) para generar una interrupción aproximadamente cada 1 ms.
+En la rutina de interrupción no se cambia la configuración del temporizador; éste siempre continúa contando milisegundos. Lo que cambia es el criterio con el que esos milisegundos son acumulados mediante la variable timerMode.
+Existen dos modos de conteo por software:
+	• TIMER_SECONDS 
+		○ Cada vez que se acumulan 1000 ms, se incrementa sec_acc. 
+		○ Este contador se utiliza para medir la duración de los estados Rojo, Verde y Amarillo. 
+	• TIMER_QUARTERS 
+		○ Cada vez que se acumulan 250 ms, se incrementa quarter_acc. 
+		○ Este contador únicamente se utiliza durante el parpadeo del LED verde. 
+Por lo tanto, el Timer0 nunca cambia de frecuencia ni de configuración; únicamente cambia la forma en que el programa agrupa los milisegundos obtenidos de la interrupción.
+
+
+
+
+#include <stdint.h>
+#include <avr/io.h>
+#include <avr/interrupt.h>
+/*=========================================================
+    Configuración
+    MCU: AVR @16MHz
+    Timer0:
+        Prescaler = 64
+        Preload = 6
+        Overflow cada 1 ms
+=========================================================*/
+#define BIT(n) (1U << (n))
+/*=========================================================
+    LEDs
+=========================================================*/
+#define LED_RED        BIT(0)
+#define LED_GREEN      BIT(1)
+#define LED_YELLOW     BIT(2)
+/*=========================================================
+    Timer
+=========================================================*/
+#define TIMER0_PRELOAD     6
+#define RED_TIME_SEC       3
+#define GREEN_TIME_SEC     2
+#define YELLOW_TIME_SEC    2
+#define LED_ON_TIME_MS     1000
+#define TOGGLE_TIME_MS     250
+/* 8 toggles = 4 parpadeos completos */
+#define GREEN_BLINKS       8
+/*=========================================================
+    Macros LEDs
+=========================================================*/
+#define TurnRedOn()        (PORTC |= LED_RED)
+#define TurnRedOff()       (PORTC &= ~LED_RED)
+#define TurnGreenOn()      (PORTC |= LED_GREEN)
+#define TurnGreenOff()     (PORTC &= ~LED_GREEN)
+#define ToggleGreen()      (PORTC ^= LED_GREEN)
+#define TurnYellowOn()     (PORTC |= LED_YELLOW)
+#define TurnYellowOff()    (PORTC &= ~LED_YELLOW)
+/*=========================================================
+    Variables
+=========================================================*/
+volatile uint16_t ms_acc = 0;
+volatile uint8_t sec_acc = 0;
+volatile uint8_t quarter_acc = 0;
+typedef enum
+{
+    TIMER_SECONDS = 0,
+    TIMER_QUARTERS
+} timer_mode_t;
+volatile timer_mode_t timerMode = TIMER_SECONDS;
+volatile uint8_t greenblink_mode = 0;
+volatile uint8_t greenblink_count = 0;
+/*=========================================================
+    Estados
+=========================================================*/
+typedef enum
+{
+    RED = 0,
+    GREEN,
+    YELLOW
+} traffic_light_t;
+traffic_light_t status = RED;
+/*=========================================================
+    GPIO
+=========================================================*/
+static void GPIO_Setup(void)
+{
+    DDRC |= (LED_RED | LED_GREEN | LED_YELLOW);
+    PORTC &= ~(LED_RED | LED_GREEN | LED_YELLOW);
+}
+/*=========================================================
+    Timer0
+=========================================================*/
+static void Timer_Setup(void)
+{
+    TCCR0A = 0x00;
+    TCCR0B = 0x00;
+    TCNT0 = TIMER0_PRELOAD;
+    TIFR0 = (1 << TOV0);
+    TIMSK0 |= (1 << TOIE0);
+    /* Prescaler = 64 */
+    TCCR0B |= (1 << CS01) | (1 << CS00);
+}
+/*=========================================================
+    ISR Timer0 Overflow
+=========================================================*/
+ISR(TIMER0_OVF_vect)
+{
+    TCNT0 = TIMER0_PRELOAD;
+    ms_acc++;
+    if (timerMode == TIMER_SECONDS)
+    {
+        if (ms_acc >= LED_ON_TIME_MS)
+        {
+            ms_acc = 0;
+            sec_acc++;
+        }
+    }
+    else
+    {
+        if (ms_acc >= TOGGLE_TIME_MS)
+        {
+            ms_acc = 0;
+            quarter_acc++;
+        }
+    }
+}
+/*=========================================================
+    Siguiente estado
+=========================================================*/
+static void NextState(void)
+{
+    status = (traffic_light_t)((status + 1) % 3);
+}
+/*=========================================================
+    Máquina de estados
+=========================================================*/
+static void TrafficLight(void)
+{
+    switch(status)
+    {
+        case RED:
+            TurnRedOn();
+            if(sec_acc >= RED_TIME_SEC)
+            {
+                TurnRedOff();
+                sec_acc = 0;
+                NextState();
+            }
+        break;
+        case GREEN:
+            if(!greenblink_mode)
+            {
+                TurnGreenOn();
+                if(sec_acc >= GREEN_TIME_SEC)
+                {
+                    sec_acc = 0;
+                    quarter_acc = 0;
+                    greenblink_count = 0;
+                    timerMode = TIMER_QUARTERS;
+                    greenblink_mode = 1;
+                }
+            }
+            else
+            {
+                if(quarter_acc >= 1)
+                {
+                    quarter_acc = 0;
+                    ToggleGreen();
+                    greenblink_count++;
+                }
+                if(greenblink_count >= GREEN_BLINKS)
+                {
+                    TurnGreenOff();
+                    greenblink_mode = 0;
+                    greenblink_count = 0;
+                    timerMode = TIMER_SECONDS;
+                    sec_acc = 0;
+                    NextState();
+                }
+            }
+        break;
+        case YELLOW:
+            TurnYellowOn();
+            if(sec_acc >= YELLOW_TIME_SEC)
+            {
+                TurnYellowOff();
+                sec_acc = 0;
+                NextState();
+            }
+        break;
+        default:
+            status = RED;
+        break;
+    }
+}
+/*=========================================================
+    Setup
+=========================================================*/
+void setup(void)
+{
+    GPIO_Setup();
+    ms_acc = 0;
+    sec_acc = 0;
+    quarter_acc = 0;
+    greenblink_mode = 0;
+    greenblink_count = 0;
+    timerMode = TIMER_SECONDS;
+    status = RED;
+    Timer_Setup();
+    sei();
+}
+/*=========================================================
+    Loop
+=========================================================*/
+void loop(void)
+{
+    while(1)
+    {
+        TrafficLight();
+    }
+}
+/*=========================================================
+    main
+=========================================================*/
+int main(void)
+{
+    setup();
+    loop();
+    return 0;
+}

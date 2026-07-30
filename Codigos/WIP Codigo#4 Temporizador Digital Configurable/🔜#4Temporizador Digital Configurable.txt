@@ -1,0 +1,38 @@
+#4 Temporizador Digital con Botones
+
+
+Desarrollo de un temporizador configurable mediante pulsadores para incrementar o disminuir el tiempo. Requiere antirrebote (debounce) y manejo de interrupciones.
+
+
+Modulos
+Pulsador
+	• 🔜Entradas con debounce WIP - Entendiendo el debounce en una FSM
+	• Entradas con resistencias pull up
+Contador binario 
+	• Interfaz de salida del contador binario
+
+Combinar todo Interfaz = pulsador + contador
+
+
+Requisitos
+
+Configuracion de tiempo
+	• Ajusta por un pulsador
+	• Disminuye o aumenta
+	• Tiempo minimo, maximo, evita desbordamients de contador
+	
+Conteo
+	• Cuenta regresiva desde el configurado
+	• Implementa antirebote por software
+	• Ignora multiples activaciones producidas por una misma pulsasion 
+
+Hardware
+	• Configura pulsadores con resistencias pull up
+	• Actualiza la interfaz visual acorde al estado del temporizador
+
+
+Arquitectura 
+	• Implementa una estructura modular mediante archivos .c, .h
+	• Centraliza las definiciones de hardware y constanes en un archivo de configuracion
+	• Declara como volatile las variables modificadas por interrupciones 
+	• Protege acceso a datos compartidos cuando sea necesario. 

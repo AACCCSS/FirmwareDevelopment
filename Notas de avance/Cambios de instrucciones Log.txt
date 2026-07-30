@@ -1,0 +1,7 @@
+Instrucción 1
+Con cada código desarrollado se realizara una evaluación del código en busca de mejoras
+
+Instrucción 2 
+Se programa el microcontrolador utilizando XMPLAB para eliminar la dependencia de arduino Core y arduino library.
+Utilizando el tutorial: 
+https://www.youtube.com/watch?v=RZbcUotPOmM&t=10s

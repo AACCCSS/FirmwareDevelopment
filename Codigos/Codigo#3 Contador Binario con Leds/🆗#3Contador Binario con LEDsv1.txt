@@ -1,0 +1,207 @@
+Construir un contador binario (0–255, por ejemplo) usando 8 LEDs conectados a un puerto del ATmega328P. El contador incrementa periódicamente mediante una interrupción de un temporizador.
+
+main()
+│
+├── initGPIO()
+├── initTimer()
+├── enableInterrupts()
+│
+└── while(1)
+      └── updateLEDs(counter)
+Mientras tanto:
+
+ISR(Timer)
+│
+└── counter++
+
+
+
+
+Modulos sugeridos:
+Módulo 1. Definición del Hardware
+Su única responsabilidad es definir direcciones de memoria, máscaras y registros.
+Aquí colocarías únicamente:
+	• Direcciones de memoria 
+	• Punteros volatile 
+	• Macros BIT(n) 
+	• Constantes 
+Ejemplo conceptual:
+
+GPIO
+    DDRD
+    PORTD
+Timer
+    TCCR0A
+    TCCR0B
+    OCR0A
+    TIMSK0
+Estado
+    contador
+No debe existir lógica aquí.
+
+Módulo 2. Inicialización del GPIO
+Responsabilidad:
+	Configurar los pines donde están conectados los LEDs.
+Diagrama
+
+initGPIO()
+↓
+Configurar DDR
+↓
+Apagar LEDs inicialmente
+No debe hacer otra cosa.
+
+Módulo 3. Inicialización del Timer
+Responsabilidad:
+	Configurar el temporizador para generar una interrupción periódica.
+Internamente:
+
+Seleccionar modo
+↓
+Seleccionar prescaler
+↓
+Cargar OCR
+↓
+Habilitar interrupción
+Todo eso pertenece únicamente a este módulo.
+
+Módulo 4. ISR
+La ISR debe ser extremadamente pequeña.
+Responsabilidad:
+
+Interrupción
+↓
+contador++
+↓
+Salir
+No escribir LEDs.
+No imprimir.
+No hacer cálculos complejos.
+Solo actualizar el estado.
+
+Módulo 5. Actualización de LEDs
+Responsabilidad:
+Mostrar el valor del contador.
+
+updateLEDs()
+↓
+Leer contador
+↓
+Copiar bits al puerto
+Este módulo nunca modifica el contador.
+Solo lo representa físicamente.
+
+Módulo 6. Programa principal
+Responsabilidad:
+Coordinar todo.
+
+main()
+↓
+initGPIO()
+↓
+initTimer()
+↓
+habilitar interrupciones
+↓
+while(1)
+↓
+updateLEDs()
+
+
+
+
+
+#include <stdint.h>
+#include <avr/io.h>
+#include <avr/interrupt.h>
+/*=========================================================
+    Configuración
+    MCU: AVR @16MHz
+    Timer0:
+        Prescaler = 64
+        Preload = 6
+        Overflow cada 1 ms
+=========================================================*/
+#define BIT(n) (1U << (n))
+/*=========================================================*/
+#define TIMER0_PRELOAD 6
+#define Timer_1000ms 1000
+#define PortD_mask 0xC0
+#define PortC_mask 0X3F
+
+/* ==== Definicion de direcciones === */
+volatile uint8_t* const DDRC_ADDR = (volatile uint8_t*)0x27;
+volatile uint8_t* const PORTC_ADDR = (volatile uint8_t*)0x28;
+volatile uint8_t* const DDRD_ADDR = (volatile uint8_t*)0x2A;
+volatile uint8_t* const PORTD_ADDR = (volatile uint8_t*)0x2B;
+volatile uint8_t* const TCCR0A_ADDR = (volatile uint8_t*)0x44;
+volatile uint8_t* const TCCR0B_ADDR = (volatile uint8_t*)0x45;
+volatile uint8_t* const TCNT0_ADDR = (volatile uint8_t*)0x46;
+volatile uint8_t* const TIFR0_ADDR = (volatile uint8_t*)0x35;
+volatile uint8_t* const TIMSK0_ADDR = (volatile uint8_t*)0x6E;
+volatile uint8_t* const SREG_ADDR = (volatile uint8_t*)0x5F;
+
+/*=========================================================
+    Variables
+=========================================================*/
+volatile uint16_t timer_ms_acc = 0;
+volatile uint8_t timer_sec_acc = 0;
+volatile uint8_t contador_acc = 0;
+
+
+/*=========================================================
+    Timer0
+=========================================================*/
+static void Timer_Setup(void) {
+  *TCCR0A_ADDR = 0x00;
+  *TCCR0B_ADDR = 0x00;
+  *TCNT0_ADDR = TIMER0_PRELOAD;
+  *TIFR0_ADDR = (1U << 0);
+  *TIMSK0_ADDR |= (1U << 0);
+  /* Prescaler = 64 */
+  *TCCR0B_ADDR |= (1U << 1) | (1U << 0);
+}
+/*=========================================================
+    ISR Timer0 Overflow
+=========================================================*/
+void __vector_16(void) __attribute__((signal));
+void __vector_16(void) {
+  *TCNT0_ADDR = TIMER0_PRELOAD;
+  timer_ms_acc++;
+  if (timer_ms_acc >= Timer_1000ms) {
+    timer_ms_acc = 0;
+    contador_acc++;
+  }
+}
+
+
+/* ========== Updating Ports ====== */
+
+
+static void UpdatePorts(void) {
+  *PORTD_ADDR = (*PORTD_ADDR & ~PortD_mask) | (contador_acc & PortD_mask);
+  *PORTC_ADDR = (*PORTC_ADDR & ~PortC_mask) | (contador_acc & PortC_mask);
+}
+/*=========================================================
+    Setup
+=========================================================*/
+void setup(void) {
+  *DDRC_ADDR = 0x3F;   // PC0-PC5 salidas
+  *DDRD_ADDR |= 0xC0;  // PD6-PD7 salidas
+  *SREG_ADDR |= (1U << 7);
+  Timer_Setup();
+  sei();
+}
+void loop(void) {
+  while (1) {
+    UpdatePorts();
+  }
+}
+/*=========================================================
+    main
+=========================================================*/
+int main(void) {
+  setup();
+  loop();
+  return 0;
+}

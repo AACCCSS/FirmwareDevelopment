@@ -1,4 +1,3 @@
-/*
 Heart Beat con CTC comp A
 
 Se requiere implementar un sistema de señalización tipo “heartbeat” utilizando CTC A del microcontrolador ATmega328P.
@@ -12,7 +11,34 @@ Se requiere implementar un sistema de señalización tipo “heartbeat” utiliz
 El sistema genera una señal visible tipo heartbeat en el pin PC4 que indica que el microcontrolador está funcionando correctamente.
 
 
-*/
+
+Valores de registros:  
+==========================
+Puertos: 
+DDRC = 0x08;
+PORTC = 0x08;
+------------------------------------------
+Registros de timer0
+TIFR0 = 0X01;
+TCCR0A = 0x00;
+TCNTO = 0x06U;
+TIMSK0 = 0x01; 
+TCCR0B = 0x03;
+==========================
+Direcciones de registros
+DDRC = 0x27; 
+PORTC = 0x28; 
+TIFT0 = 0x35; 
+TCCR0A = 0x44; 
+TCCR0B = 0x45; 
+TCNT0 = 0x46;  // Timer Counter 0 
+TIMSK0 = 0x6E; //  Timer/Counter Interrupt Mask
+
+
+
+
+
+Codigo con correcciones:  codigo 230626v2
 
 #include <stdint.h>
 
@@ -159,3 +185,4 @@ int main(void)
 
     return 0;
 }
+

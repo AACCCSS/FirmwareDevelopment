@@ -1,0 +1,263 @@
+Desarrolla un proyecto utilizando programación bare-metal sobre ATmega328P, sin emplear HAL, Arduino, ASF ni bibliotecas de abstracción.
+
+El código debe acceder directamente a los registros mediante punteros volatile, utilizar direcciones de memoria explícitas, máscaras BIT(n), operaciones bitwise, ISR con __attribute__((signal)) y vectores __vector_xx, siendo completamente compatible con avr-gcc.
+
+Implementar un sistema Heartbeat con Timer0 en modo CTC cumpliendo los siguientes requerimientos:
+
+1. Configurar Timer0 en modo CTC utilizando OCR0A como TOP.
+2. F_CPU = 16 MHz.
+3. Prescaler = 64.
+4. Generar una base de tiempo de aproximadamente 1 ms mediante Compare Match A.
+5. Utilizar la interrupción TIMER0_COMPA (__vector_14) para implementar un divisor por software que genere un heartbeat de 100 ms.
+6. El heartbeat deberá alternar el estado del pin PC4.
+7. Configurar OC0B para Toggle on Compare Match mediante hardware utilizando COM0B0.
+8. El pin OC0B (PD5) deberá alternarse automáticamente por hardware sin intervención del software.
+9. Habilitar además la interrupción TIMER0_COMPB (__vector_15).
+10. En la ISR de COMPB implementar un segundo divisor por software (software prescaler) utilizando un contador y una bandera para generar un evento aproximadamente cada 6 ms.
+11. El procesamiento asociado a dicho evento deberá realizarse en el main(), alternando el estado del pin PD4.
+12. Las ISR deberán contener únicamente el código mínimo necesario (incremento de contadores y activación de banderas).
+13. Toda la lógica de aplicación deberá ejecutarse desde el ciclo principal utilizando programación cooperativa basada en banderas.
+14. Inicializar el hardware mediante funciones independientes:
+    - gpio_init()
+    - timer0_ctc_init()
+15. Inicializar explícitamente el estado de los pines antes de habilitar el temporizador.
+16. Habilitar las interrupciones globales únicamente después de finalizar toda la inicialización del hardware.
+17. Evitar números mágicos definiendo constantes simbólicas para:
+    - OCR0A
+    - OCR0B
+    - divisores por software
+    - tiempos del heartbeat
+18. Utilizar nombres descriptivos para variables, funciones y banderas.
+19. Documentar mediante comentarios el cálculo de tiempos del temporizador (tick, OCR0A, OCR0B, período e interrupciones).
+20. Mantener una estructura modular claramente separada en:
+    - Definición de registros
+    - Máscaras
+    - Constantes
+    - Variables globales
+    - Inicialización GPIO
+    - Inicialización Timer0
+    - ISR COMPA
+    - ISR COMPB
+    - Funciones de aplicación
+    - main()
+
+El resultado debe ser código limpio, modular, legible y siguiendo prácticas comunes de desarrollo profesional de firmware embebido para microcontroladores AVR.
+
+
+
+
+#include <stdint.h>
+
+/*=========================================================
+    Registros ATmega328P
+=========================================================*/
+
+volatile uint8_t* DDRC_ADDR   = (uint8_t*)0x27;
+volatile uint8_t* PORTC_ADDR  = (uint8_t*)0x28;
+
+volatile uint8_t* DDRD_ADDR   = (uint8_t*)0x2A;
+volatile uint8_t* PORTD_ADDR  = (uint8_t*)0x2B;
+
+volatile uint8_t* TCCR0A_ADDR = (uint8_t*)0x44;
+volatile uint8_t* TCCR0B_ADDR = (uint8_t*)0x45;
+volatile uint8_t* TCNT0_ADDR  = (uint8_t*)0x46;
+volatile uint8_t* OCR0A_ADDR  = (uint8_t*)0x47;
+volatile uint8_t* OCR0B_ADDR  = (uint8_t*)0x48;
+
+volatile uint8_t* TIMSK0_ADDR = (uint8_t*)0x6E;
+volatile uint8_t* TIFR0_ADDR  = (uint8_t*)0x35;
+
+/*=========================================================
+    Macros
+=========================================================*/
+
+#define BIT(n)             (1U << (n))
+
+/* GPIO */
+
+#define PC4_MASK           BIT(4)
+
+#define PD4_MASK           BIT(4)
+#define PD5_MASK           BIT(5)
+
+/* TCCR0A */
+
+#define WGM01_MASK         BIT(1)
+#define COM0B0_MASK        BIT(4)
+
+/* TCCR0B */
+
+#define CS01_MASK          BIT(1)
+#define CS00_MASK          BIT(0)
+
+/* TIMSK0 */
+
+#define OCIE0A_MASK        BIT(1)
+#define OCIE0B_MASK        BIT(2)
+
+/* TIFR0 */
+
+#define OCF0A_MASK         BIT(1)
+#define OCF0B_MASK         BIT(2)
+
+/*=========================================================
+    Configuración temporal
+
+    F_CPU      = 16 MHz
+    Prescaler  = 64
+
+    Tick Timer = 4 us
+
+    OCR0A = 249
+    Periodo CTC = 1 ms
+
+    OCR0B = 125
+    Compare Match B = 500 us
+=========================================================*/
+
+#define OCR0A_VALUE            249U
+#define OCR0B_VALUE            125U
+
+#define HEARTBEAT_PERIOD_MS    100U
+#define COMPB_SOFT_DIVIDER      12U
+
+/*=========================================================
+    Variables Globales
+=========================================================*/
+
+volatile uint16_t heartbeat_ticks = 0;
+volatile uint8_t heartbeat_ready = 0;
+
+volatile uint8_t compb_divider = 0;
+volatile uint8_t compb_ready = 0;
+
+/*=========================================================
+    GPIO
+=========================================================*/
+
+static void gpio_init(void)
+{
+    *DDRC_ADDR |= PC4_MASK;
+
+    *DDRD_ADDR |= (PD4_MASK | PD5_MASK);
+
+    *PORTC_ADDR &= ~PC4_MASK;
+    *PORTD_ADDR &= ~(PD4_MASK | PD5_MASK);
+}
+
+/*=========================================================
+    Timer0 CTC
+=========================================================*/
+
+static void timer0_ctc_init(void)
+{
+    /* Detener Timer */
+
+    *TCCR0A_ADDR = 0x00;
+    *TCCR0B_ADDR = 0x00;
+
+    /*
+        CTC
+        OC0B Toggle on Compare Match
+    */
+
+    *TCCR0A_ADDR = WGM01_MASK | COM0B0_MASK;
+
+    *TCNT0_ADDR = 0;
+
+    *OCR0A_ADDR = OCR0A_VALUE;
+    *OCR0B_ADDR = OCR0B_VALUE;
+
+    /* Limpiar flags pendientes */
+
+    *TIFR0_ADDR = OCF0A_MASK | OCF0B_MASK;
+
+    /* Habilitar interrupciones */
+
+    *TIMSK0_ADDR = OCIE0A_MASK | OCIE0B_MASK;
+
+    /* Prescaler = 64 */
+
+    *TCCR0B_ADDR = CS01_MASK | CS00_MASK;
+}
+
+/*=========================================================
+    TIMER0 COMPA
+=========================================================*/
+
+void __vector_14(void) __attribute__((signal));
+
+void __vector_14(void)
+{
+    heartbeat_ticks++;
+
+    if (heartbeat_ticks >= HEARTBEAT_PERIOD_MS)
+    {
+        heartbeat_ticks = 0;
+        heartbeat_ready = 1;
+    }
+}
+
+/*=========================================================
+    TIMER0 COMPB
+=========================================================*/
+
+void __vector_15(void) __attribute__((signal));
+
+void __vector_15(void)
+{
+    compb_divider++;
+
+    if (compb_divider >= COMPB_SOFT_DIVIDER)
+    {
+        compb_divider = 0;
+        compb_ready = 1;
+    }
+}
+
+/*=========================================================
+    Tasks
+=========================================================*/
+
+static void heartbeat_pc4_task(void)
+{
+    *PORTC_ADDR ^= PC4_MASK;
+}
+
+static void compb_pd4_task(void)
+{
+    *PORTD_ADDR ^= PD4_MASK;
+}
+
+/*=========================================================
+    Main
+=========================================================*/
+
+int main(void)
+{
+    gpio_init();
+
+    timer0_ctc_init();
+
+    /* Habilitar interrupciones globales */
+
+    __asm__ __volatile__("sei");
+
+    while (1)
+    {
+        if (heartbeat_ready)
+        {
+            heartbeat_ready = 0;
+            heartbeat_pc4_task();
+        }
+
+        if (compb_ready)
+        {
+            compb_ready = 0;
+            compb_pd4_task();
+        }
+
+    }
+}
+
+
