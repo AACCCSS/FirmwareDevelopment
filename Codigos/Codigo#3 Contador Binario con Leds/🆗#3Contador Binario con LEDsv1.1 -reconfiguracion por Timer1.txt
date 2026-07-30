@@ -1,0 +1,133 @@
+Construir un contador binario (0–255, por ejemplo) usando 8 LEDs conectados a un puerto del ATmega328P. El contador incrementa periódicamente mediante una interrupción de un temporizador.
+
+main()
+│
+├── initGPIO()
+├── initTimer()
+├── enableInterrupts()
+│
+└── while(1)
+      └── updateLEDs(counter)
+Mientras tanto:
+
+ISR(Timer)
+│
+└── counter++
+
+
+
+#include <stdint.h>
+#include <avr/io.h>
+#include <avr/interrupt.h>
+/*=========================================================
+    Configuración
+    MCU: ATmega328P @16 MHz
+    Timer1:
+        Modo CTC
+        Prescaler = 64
+        OCR1A = 249
+        Interrupción cada 1 ms
+=========================================================*/
+#define BIT(n) (1U << (n))
+#define TIMER_1000MS 1000U
+#define TIMER1_preload 65286U
+#define PORTD_MASK 0xC0
+#define PORTC_MASK 0x3F
+/*=========================================================
+    Direcciones de registros
+=========================================================*/
+/* GPIO */
+volatile uint8_t * const DDRC_ADDR = (volatile uint8_t *)0x27;
+volatile uint8_t * const PORTC_ADDR = (volatile uint8_t *)0x28;
+volatile uint8_t * const DDRD_ADDR = (volatile uint8_t *)0x2A;
+volatile uint8_t * const PORTD_ADDR = (volatile uint8_t *)0x2B;
+/* Timer1 */
+volatile uint8_t * const TCCR1A_ADDR = (volatile uint8_t *)0x80;
+volatile uint8_t * const TCCR1B_ADDR = (volatile uint8_t *)0x81;
+volatile uint8_t * const TCCR1C_ADDR = (volatile uint8_t *)0x82;
+volatile uint8_t * const TCNT1L_ADDR = (volatile uint8_t *)0x84;
+volatile uint8_t * const TCNT1H_ADDR = (volatile uint8_t *)0x85;
+volatile uint8_t * const TIFR1_ADDR = (volatile uint8_t *)0x36;
+volatile uint8_t * const TIMSK1_ADDR = (volatile uint8_t *)0x6F;
+volatile uint8_t * const SREG_ADDR = (volatile uint8_t *)0x5F;
+/*=========================================================
+    Variables
+=========================================================*/
+volatile uint16_t timer_ms_acc = 0;
+volatile uint8_t contador_acc = 0;
+
+/*=========================================================
+    Configuración Timer1
+=========================================================*/
+static void Timer1_Setup(void) {
+    /* Detener temporizador */
+    *TCCR1A_ADDR = 0x00;
+    *TCCR1B_ADDR = 0x00;
+    *TCCR1C_ADDR = 0x00;
+    /* Reiniciar contador */
+    *TCNT1H_ADDR = 0;
+    *TCNT1L_ADDR = 0;
+
+    
+    *TIFR1_ADDR = BIT(0);
+    
+    *TIMSK1_ADDR |= BIT(0);
+    
+    *TCCR1B_ADDR |= (BIT(1)|BIT(0));
+    *PORTC_ADDR |= (1 << 0);
+
+
+
+}
+/*=========================================================
+ ISR TIMER1 OVF
+=========================================================*/
+void __vector_13(void) __attribute__((signal));
+
+void __vector_13(void) {
+    /* Recargar Timer1 */
+    *TCNT1H_ADDR = (uint8_t) (TIMER1_preload >> 8);
+    *TCNT1L_ADDR = (uint8_t) (TIMER1_preload);
+    timer_ms_acc++;
+    if (timer_ms_acc >= TIMER_1000MS) {
+        timer_ms_acc = 0;
+        contador_acc++;
+    }
+}
+
+/*=========================================================
+    Actualización de puertos
+=========================================================*/
+static void UpdatePorts(void) {
+    *PORTC_ADDR =
+            (*PORTC_ADDR & (uint8_t) (~PORTC_MASK))
+            | (contador_acc & PORTC_MASK);
+    *PORTD_ADDR =
+            (*PORTD_ADDR & (uint8_t) (~PORTD_MASK))
+            | (contador_acc & PORTD_MASK);
+}
+
+/*=========================================================
+    Setup
+=========================================================*/
+void setup(void) {
+    /* PC0-PC5 como salida */
+    *DDRC_ADDR |= PORTC_MASK;
+    /* PD6-PD7 como salida */
+    *DDRD_ADDR |= PORTD_MASK;
+    Timer1_Setup();
+
+
+    *SREG_ADDR |= (1U << 7);
+}
+
+/*=========================================================
+    Loop
+=========================================================*/
+int main(void) {
+    setup();
+    *PORTC_ADDR &=~(1<<0);
+    while (1)
+        UpdatePorts();
+    return 0;
+}

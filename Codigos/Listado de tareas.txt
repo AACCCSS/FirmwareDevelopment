@@ -1,0 +1,101 @@
+Codigos desarrollados: 3
+
+Versiones de codigos desarrollados: 1
+
+Codigos desarrollados alternos: 0
+
+
+
+#1 Heartbeat LED Profesional	Construcción del circuito mínimo del ATmega328P con cristal, capacitores y LED. Programación mediante Timer0 e interrupciones para generar un heartbeat de 500 ms. Introduce GPIO, timers e ISR.
+#2 Semáforo Inteligente	Control de tres LEDs simulando un semáforo vehicular utilizando una máquina de estados finita (FSM). Permite aprender lógica secuencial y temporización.
+#3 Contador Binario con LEDs	Implementación de un contador de 8 bits utilizando ocho LEDs conectados al puerto B o D. Introduce operaciones bitwise y manipulación de registros.
+#4 Temporizador Digital con Botones	Desarrollo de un temporizador configurable mediante pulsadores para incrementar o disminuir el tiempo. Requiere antirrebote (debounce) y manejo de interrupciones.
+#5 Control PWM para Brillo de LED	Generación de una señal PWM usando Timer1 o Timer2 para variar el brillo de un LED. Introduce modos Fast PWM y Phase Correct PWM.
+#6 Control de Servo Motor	Generación manual de pulsos PWM de 1 a 2 ms para posicionar un servomotor SG90 sin utilizar librerías externas. Se estudia precisión temporal y configuración avanzada de timers.
+#7 Termómetro Digital con ADC	Lectura de un sensor LM35 o TMP36 mediante el convertidor analógico-digital interno y conversión del valor a temperatura. Introduce ADC, referencias de voltaje y escalamiento.
+#8 Voltímetro Digital	Medición de un voltaje externo mediante divisor resistivo y ADC. Los resultados pueden mostrarse mediante UART hacia una computadora.
+#9 Comunicación UART desde Cero	Implementación completa de un driver UART para transmitir y recibir caracteres sin librerías. Incluye configuración de baud rate, buffer circular e interrupciones.
+#10 Estación de Monitoreo Serial	Integración de ADC y UART para enviar continuamente datos de sensores hacia una terminal serial en la computadora. Introduce adquisición y transmisión de datos.
+#11 Controlador SPI Maestro	Comunicación con una memoria EEPROM o un registro de desplazamiento 74HC595 utilizando SPI implementado directamente mediante registros del ATmega328P.
+#12 Escáner de Bus I²C	Desarrollo de un programa que detecte dispositivos conectados al bus I²C recorriendo todas las direcciones posibles y reportando las encontradas mediante UART.
+#13 Reloj Cooperativo Multitarea	Implementación de un scheduler cooperativo utilizando Timer0 para ejecutar varias tareas periódicas (LED, lectura ADC y UART) sin RTOS. Introduce sistemas embebidos de tiempo real.
+#14 Sistema de Alarma Doméstica	Integración de sensores magnéticos o PIR con buzzer y LEDs. Utiliza interrupciones externas y una máquina de estados para controlar armado, disparo y reinicio.
+#15 Mini Sistema Embebido Robusto	Proyecto integrador que combina timers, ADC, UART, watchdog, scheduler cooperativo y manejo de errores para construir un firmware tolerante a fallos. Simula un producto comercial sencillo.
+#16 Control de barra LED tipo VU Meter	Representar el valor del ADC en una barra de 8 LEDs.
+#17 Detector de doble pulsación	Detectar dos pulsaciones consecutivas dentro de un intervalo de tiempo.
+#18 Medidor de frecuencia de una señal externa	Calcular la frecuencia de una señal aplicada a un pin de entrada.
+#19 Medidor de período de una onda	Obtener el período entre dos flancos consecutivos de una señal.
+#20 Generador de retardos no bloqueantes	Implementar múltiples temporizadores software independientes.
+#21 Biblioteca GPIO bare-metal	Crear funciones para configurar, leer y escribir pines mediante registros.
+#22 Driver para teclado matricial 4×4	Detectar teclas mediante barrido de filas y columnas.
+#23 Control de servomotor por PWM	Generar pulsos de 1–2 ms para posicionar un servomotor.
+#24 Medidor de ancho de pulso	Calcular la duración de un pulso de entrada utilizando Input Capture.
+#25 Driver para pantalla LCD 16×2 (modo 4 bits)	Controlar una pantalla LCD escribiendo directamente sobre los puertos.
+#26 Monitor de actividad de puertos	Detectar y registrar cambios de estado en múltiples pines de entrada.
+#27 Generador de tonos musicales	Generar notas musicales mediante PWM y temporizadores.
+#28 Reloj digital HH:MM:SS	Implementar un reloj basado en ticks de 1 segundo.
+#29 Detector de pulsación prolongada	Diferenciar entre pulsación corta y larga sobre un botón.
+#30 Sistema de adquisición de datos periódico	Muestrear una entrada analógica cada intervalo fijo y almacenar las muestras.
+
+
+Proyecto: 
+
+Code#1-Heartbeat LED 	8.5/10
+
+Code#2-Semáforo Inteligente 	8.5/10
+
+Code#3-Contador Binario con LEDs	8.2/10
+
+Code#4-Temporizador Digital con Botones
+
+Code#5-Control PWM para Brillo de LED
+
+Code#6-Control de Servo Motor
+
+Code#7-Termómetro Digital con ADC
+
+Code#8-Voltímetro Digital
+
+Code#9-Comunicación UART desde Cero
+
+Code#10-Estación de Monitoreo Serial
+
+Code#11-Controlador SPI Maestro
+
+Code#12-Escáner de Bus I²C
+
+Code#13-Reloj Cooperativo Multitarea
+
+Code#14-Sistema de Alarma Doméstica
+
+Code#15-Mini Sistema Embebido Robusto
+
+Code#16-Control de barra LED tipo VU Meter
+
+Code#17-Detector de doble pulsación
+
+Code#18-Medidor de frecuencia de una señal externa
+
+Code#19-Medidor de período de una onda
+
+Code#20-Generador de retardos no bloqueantes
+
+Code#21-Biblioteca GPIO bare-metal
+
+Code#22-Driver para teclado matricial 4×4
+
+Code#23-Control de servomotor por PWM
+
+Code#24-Medidor de ancho de pulso
+
+Code#25-Driver para pantalla LCD 16×2 (modo 4 bits)
+
+Code#26-Monitor de actividad de puertos
+
+Code#27-Generador de tonos musicales
+
+Code#28-Reloj digital HH:MM:SS
+
+Code#29-Detector de pulsación prolongada
+
+Code#30-Sistema de adquisición de datos periódico

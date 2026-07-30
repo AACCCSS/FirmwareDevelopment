@@ -1,0 +1,14 @@
+En que paso me quede? 
+Trabajando actual:
+	• Trabajando en archivo 
+	• Software: MPLAB X
+	• Se hizo: 
+	• Para la siguiente sesion:
+
+
+Para reanudar la tarea: 
+Configura headers para timer
+Configura Headers para GPIO
+Configura Repositorio GitHub para control de codigos + Formatos
+Documenta como programar placa de arduino con X MPLAB y no depender del arduino IDE. Investiga limitaciones
+
