@@ -1,0 +1,270 @@
+# Problemario: Máquinas de Estados Finitos (FSM)
+
+## Objetivo
+
+Diseñar la Máquina de Estados Finitos (Finite State Machine, FSM) para cada uno de los siguientes problemas. Para cada ejercicio se debe identificar:
+
+- Estados.
+- Eventos.
+- Acciones (si aplica).
+- Tabla de transición.
+- Diagrama de estados.
+- Implementación en pseudocódigo o lenguaje C.
+
+> **Nota:** Las soluciones se encuentran al final del documento.
+
+---
+
+# Problema 1. Puerta Automática
+
+## Descripción
+
+Se desea controlar una puerta automática instalada en la entrada de un supermercado.
+
+## Requisitos
+
+- La puerta inicia completamente cerrada.
+- Cuando una persona es detectada, la puerta comienza a abrirse.
+- Una vez abierta completamente, permanece abierta durante 5 segundos.
+- Si durante ese tiempo no se detecta otra persona, la puerta comienza a cerrarse.
+- Si mientras la puerta se está cerrando se detecta nuevamente una persona, la puerta debe volver a abrirse inmediatamente.
+- La puerta nunca debe permanecer parcialmente abierta al finalizar un movimiento.
+
+---
+
+# Problema 2. Lavadora Automática
+
+## Descripción
+
+Se desea controlar el ciclo completo de una lavadora doméstica.
+
+## Requisitos
+
+- La lavadora permanece esperando el inicio del usuario.
+- Al presionar el botón de inicio comienza el llenado del tanque.
+- Cuando el tanque está lleno inicia el lavado.
+- Al finalizar el lavado comienza el enjuague.
+- Después del enjuague inicia el centrifugado.
+- Al finalizar el centrifugado se activa una alarma sonora indicando que el ciclo terminó.
+- Si durante el centrifugado el usuario abre la tapa, el proceso debe detenerse inmediatamente.
+
+---
+
+# Problema 3. Cajero Automático (ATM)
+
+## Descripción
+
+Se desea modelar el funcionamiento básico de un cajero automático.
+
+## Requisitos
+
+- El sistema espera la inserción de una tarjeta.
+- Una vez insertada la tarjeta solicita el NIP.
+- Si el NIP es correcto muestra el menú principal.
+- El usuario selecciona retirar efectivo.
+- El cajero entrega el dinero.
+- Finalmente devuelve la tarjeta.
+- Después de tres intentos incorrectos de NIP, la tarjeta es retenida.
+
+---
+
+# Problema 4. Sistema de Alarma Residencial
+
+## Descripción
+
+Se desea implementar una alarma para una vivienda.
+
+## Requisitos
+
+- El sistema inicia desactivado.
+- El propietario introduce un código para activar la alarma.
+- Una vez activada comienza a monitorear todos los sensores.
+- Si algún sensor detecta movimiento, la sirena se activa.
+- La sirena continúa sonando hasta que el propietario introduce el código correcto.
+- Si el código es incorrecto, la alarma continúa activa.
+
+---
+
+# Problema 5. Horno de Microondas
+
+## Descripción
+
+Se desea controlar un horno de microondas.
+
+## Requisitos
+
+- El sistema permanece esperando la programación del tiempo.
+- Cuando el usuario presiona el botón Inicio comienza el calentamiento.
+- Si durante el calentamiento la puerta es abierta, el calentamiento se detiene inmediatamente.
+- Una vez cerrada la puerta, el usuario debe volver a presionar Inicio para continuar.
+- Cuando el tiempo programado termina, el horno emite una señal acústica y vuelve al estado inicial.
+
+---
+
+# Soluciones
+
+---
+
+# Solución 1. Puerta Automática
+
+## Estados
+
+- S0 — Cerrada
+- S1 — Abriendo
+- S2 — Abierta
+- S3 — Cerrando
+
+## Eventos
+
+- Persona detectada
+- Puerta completamente abierta
+- Temporizador expirado
+- Puerta completamente cerrada
+
+## Tabla de Transición
+
+| Estado Actual | Evento | Estado Siguiente |
+|---------------|--------|------------------|
+| Cerrada | Persona detectada | Abriendo |
+| Abriendo | Puerta abierta | Abierta |
+| Abierta | Tiempo expirado | Cerrando |
+| Cerrando | Persona detectada | Abriendo |
+| Cerrando | Puerta cerrada | Cerrada |
+
+---
+
+# Solución 2. Lavadora
+
+## Estados
+
+- Espera
+- Llenando
+- Lavando
+- Enjuagando
+- Centrifugando
+- Fin
+
+## Eventos
+
+- Inicio
+- Tanque lleno
+- Lavado terminado
+- Enjuague terminado
+- Centrifugado terminado
+- Tapa abierta
+
+## Tabla de Transición
+
+| Estado Actual | Evento | Estado Siguiente |
+|---------------|--------|------------------|
+| Espera | Inicio | Llenando |
+| Llenando | Tanque lleno | Lavando |
+| Lavando | Fin de lavado | Enjuagando |
+| Enjuagando | Fin de enjuague | Centrifugando |
+| Centrifugando | Fin de centrifugado | Fin |
+| Fin | Reinicio | Espera |
+| Centrifugando | Tapa abierta | Espera |
+
+---
+
+# Solución 3. Cajero Automático
+
+## Estados
+
+- Esperando tarjeta
+- Verificando NIP
+- Menú principal
+- Entregando efectivo
+- Devolviendo tarjeta
+- Tarjeta retenida
+
+## Eventos
+
+- Tarjeta insertada
+- NIP correcto
+- NIP incorrecto
+- Selección de retiro
+- Efectivo entregado
+- Tarjeta retirada
+
+## Tabla de Transición
+
+| Estado Actual | Evento | Estado Siguiente |
+|---------------|--------|------------------|
+| Esperando tarjeta | Tarjeta insertada | Verificando NIP |
+| Verificando NIP | NIP correcto | Menú principal |
+| Verificando NIP | NIP incorrecto (<3 intentos) | Verificando NIP |
+| Verificando NIP | NIP incorrecto (=3 intentos) | Tarjeta retenida |
+| Menú principal | Retiro seleccionado | Entregando efectivo |
+| Entregando efectivo | Dinero entregado | Devolviendo tarjeta |
+| Devolviendo tarjeta | Tarjeta retirada | Esperando tarjeta |
+
+---
+
+# Solución 4. Sistema de Alarma
+
+## Estados
+
+- Desactivada
+- Activada
+- Sirena activa
+
+## Eventos
+
+- Código correcto
+- Movimiento detectado
+- Código incorrecto
+
+## Tabla de Transición
+
+| Estado Actual | Evento | Estado Siguiente |
+|---------------|--------|------------------|
+| Desactivada | Código correcto | Activada |
+| Activada | Movimiento detectado | Sirena activa |
+| Sirena activa | Código correcto | Desactivada |
+| Sirena activa | Código incorrecto | Sirena activa |
+
+---
+
+# Solución 5. Horno de Microondas
+
+## Estados
+
+- Esperando
+- Cocinando
+- Pausa
+- Finalizado
+
+## Eventos
+
+- Inicio
+- Puerta abierta
+- Puerta cerrada
+- Tiempo terminado
+
+## Tabla de Transición
+
+| Estado Actual | Evento | Estado Siguiente |
+|---------------|--------|------------------|
+| Esperando | Inicio | Cocinando |
+| Cocinando | Puerta abierta | Pausa |
+| Pausa | Puerta cerrada | Esperando |
+| Cocinando | Tiempo terminado | Finalizado |
+| Finalizado | Reinicio | Esperando |
+
+---
+
+# Actividades Propuestas
+
+Para cada uno de los problemas anteriores:
+
+1. Identificar todos los estados.
+2. Identificar todos los eventos.
+3. Dibujar el diagrama de estados.
+4. Construir la tabla de transición.
+5. Implementar la FSM en pseudocódigo.
+6. Implementar la FSM en lenguaje C utilizando `switch-case`.
+7. Implementar la FSM utilizando una tabla de transición (`State Table`).
+8. Simular el funcionamiento mediante diferentes secuencias de eventos.
+9. Analizar el comportamiento ante eventos inválidos.
+10. Proponer mejoras al diseño original.
