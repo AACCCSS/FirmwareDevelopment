@@ -1,0 +1,11 @@
+Instrucción 1
+Con cada código desarrollado se realizara una evaluación del código en busca de mejoras
+
+Instrucción 2 ok
+Se programa el microcontrolador utilizando XMPLAB para eliminar la dependencia de arduino Core y arduino library.
+Utilizando el tutorial: 
+https://www.youtube.com/watch?v=RZbcUotPOmM&t=10s
+
+Instrucción 3 Practicas de desarrolllo de maquinas de estado 3
+Instrucción 4 - Las practicas se realizaran en programación C++ utilizando devian para el desarrollo 
+Instrucción 5 - Nuevo problemario .txt para el desarrollo de practicas escritas en formato mk para mejorar. 
